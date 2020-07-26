@@ -1,8 +1,9 @@
 <?php
+
 namespace MadeITBelgium\VerifyEmail;
 
-use \DOMDocument;
-use \DOMXpath;
+use DOMDocument;
+use DOMXpath;
 
 /**
  * MadeITBelgium VerifyEmail PHP Library.
@@ -13,7 +14,6 @@ use \DOMXpath;
  * @author     Tjebbe Lievens <tjebbe.lievens@madeit.be>
  * @license    http://www.gnu.org/licenses/old-licenses/lgpl-3.txt    LGPL
  */
-
 class VerifyEmail
 {
     public $email;
@@ -27,29 +27,28 @@ class VerifyEmail
 
     private $_yahoo_signup_page_url = 'https://login.yahoo.com/account/create?specId=yidReg&lang=en-US&src=&done=https%3A%2F%2Fwww.yahoo.com&display=login';
     private $_yahoo_signup_ajax_url = 'https://login.yahoo.com/account/module/create?validateField=yid';
-    private $_yahoo_domains = array(
-        'yahoo.com'
-    );
+    private $_yahoo_domains = [
+        'yahoo.com',
+    ];
     private $_hotmail_signin_page_url = 'https://login.live.com/';
     private $_hotmail_username_check_url = 'https://login.live.com/GetCredentialType.srf?wa=wsignin1.0';
-    private $_hotmail_domains = array(
+    private $_hotmail_domains = [
         'hotmail.com',
         'live.com',
         'outlook.com',
-        'msn.com'
-    );
+        'msn.com',
+    ];
     private $page_content;
     private $page_headers;
 
     public function __construct($verifier_email = null, $port = 25)
     {
-        $this->debug = array();
-        $this->debug_raw = array();
+        $this->debug = [];
+        $this->debug_raw = [];
         if (!is_null($verifier_email)) {
-            $this->debug[] = 'Initialized with Verifier Email: ' . $verifier_email . ', Port: ' . $port;
+            $this->debug[] = 'Initialized with Verifier Email: '.$verifier_email.', Port: '.$port;
             $this->setVerifierEmail($verifier_email);
-        }
-        else {
+        } else {
             $this->debug[] = 'Initialized with no email or verifier email values';
         }
         $this->setPort($port);
@@ -58,7 +57,7 @@ class VerifyEmail
     public function setVerifierEmail($email)
     {
         $this->verifier_email = $email;
-        $this->debug[] = 'Verifier Email was set to ' . $email;
+        $this->debug[] = 'Verifier Email was set to '.$email;
         $this->clear_errors();
     }
 
@@ -70,7 +69,7 @@ class VerifyEmail
     public function setEmail($email)
     {
         $this->email = $email;
-        $this->debug[] = 'Email was set to ' . $email;
+        $this->debug[] = 'Email was set to '.$email;
         $this->clear_errors();
     }
 
@@ -82,7 +81,7 @@ class VerifyEmail
     public function setPort($port)
     {
         $this->port = $port;
-        $this->debug[] = 'Port was set to ' . $port;
+        $this->debug[] = 'Port was set to '.$port;
     }
 
     public function getPort()
@@ -92,127 +91,110 @@ class VerifyEmail
 
     public function getErrors()
     {
-        return array(
-            'errors' => $this->errors
-        );
+        return [
+            'errors' => $this->errors,
+        ];
     }
 
     public function getDebug($raw = false)
     {
-        if ($raw)
-        {
+        if ($raw) {
             return $this->debug_raw;
-        }
-        else
-        {
+        } else {
             return $this->debug;
         }
     }
 
     public function verify($email = null, $verifier_email = null, $port = null)
     {
-        if($email !== null) {
-            $this->debug = array();
-            $this->debug_raw = array();
+        if ($email !== null) {
+            $this->debug = [];
+            $this->debug_raw = [];
             $this->setEmail($email);
         }
-        
-        if($verifier_email !== null) {
-            $this->debug = array();
-            $this->debug_raw = array();
+
+        if ($verifier_email !== null) {
+            $this->debug = [];
+            $this->debug_raw = [];
             $this->setVerifierEmail($verifier_email);
         }
-        
-        if($port !== null) {
+
+        if ($port !== null) {
             $this->setPort($port);
         }
-        
+
         $this->debug[] = 'Verify function was called.';
 
         $is_valid = false;
 
         //check if this is a yahoo email
         $domain = $this->get_domain($this->email);
-        if (in_array(strtolower($domain) , $this->_yahoo_domains))
-        {
+        if (in_array(strtolower($domain), $this->_yahoo_domains)) {
             $is_valid = $this->validate_yahoo();
-        }
-        else if (in_array(strtolower($domain) , $this->_hotmail_domains))
-        {
+        } elseif (in_array(strtolower($domain), $this->_hotmail_domains)) {
             $is_valid = $this->validate_hotmail();
         }
         //otherwise check the normal way
-        else
-        {
+        else {
             //find mx
             $this->debug[] = 'Finding MX record...';
             $this->find_mx();
 
-            if (!$this->mx)
-            {
+            if (!$this->mx) {
                 $this->debug[] = 'No MX record was found.';
                 $this->add_error('100', 'No suitable MX records found.');
+
                 return $is_valid;
-            }
-            else
-            {
-                $this->debug[] = 'Found MX: ' . $this->mx;
+            } else {
+                $this->debug[] = 'Found MX: '.$this->mx;
             }
 
             $this->debug[] = 'Connecting to the server...';
             $this->connect_mx();
 
-            if (!$this->connect)
-            {
+            if (!$this->connect) {
                 $this->debug[] = 'Connection to server failed.';
                 $this->add_error('110', 'Could not connect to the server.');
+
                 return $is_valid;
-            }
-            else
-            {
+            } else {
                 $this->debug[] = 'Connection to server was successful.';
             }
 
             $this->debug[] = 'Starting veriffication...';
-            if (preg_match("/^220/i", $out = fgets($this->connect)))
-            {
+            if (preg_match('/^220/i', $out = fgets($this->connect))) {
                 $this->debug[] = 'Got a 220 response. Sending HELO...';
-                fputs($this->connect, "HELO " . $this->get_domain($this->verifier_email) . "\r\n");
+                fwrite($this->connect, 'HELO '.$this->get_domain($this->verifier_email)."\r\n");
                 $out = fgets($this->connect);
                 $this->debug_raw['helo'] = $out;
-                $this->debug[] = 'Response: ' . $out;
+                $this->debug[] = 'Response: '.$out;
 
                 $this->debug[] = 'Sending MAIL FROM...';
-                fputs($this->connect, "MAIL FROM: <" . $this->verifier_email . ">\r\n");
+                fwrite($this->connect, 'MAIL FROM: <'.$this->verifier_email.">\r\n");
                 $from = fgets($this->connect);
                 $this->debug_raw['mail_from'] = $from;
-                $this->debug[] = 'Response: ' . $from;
+                $this->debug[] = 'Response: '.$from;
 
                 $this->debug[] = 'Sending RCPT TO...';
-                fputs($this->connect, "RCPT TO: <" . $this->email . ">\r\n");
+                fwrite($this->connect, 'RCPT TO: <'.$this->email.">\r\n");
                 $to = fgets($this->connect);
                 $this->debug_raw['rcpt_to'] = $to;
-                $this->debug[] = 'Response: ' . $to;
+                $this->debug[] = 'Response: '.$to;
 
                 $this->debug[] = 'Sending QUIT...';
-                $quit = fputs($this->connect, "QUIT");
+                $quit = fwrite($this->connect, 'QUIT');
                 $this->debug_raw['quit'] = $quit;
                 fclose($this->connect);
 
                 $this->debug[] = 'Looking for 250 response...';
-                if (!preg_match("/^250/i", $from) || !preg_match("/^250/i", $to))
-                {
+                if (!preg_match('/^250/i', $from) || !preg_match('/^250/i', $to)) {
                     $this->debug[] = 'Not found! Email is invalid.';
                     $is_valid = false;
-                }
-                else
-                {
+                } else {
                     $this->debug[] = 'Found! Email is valid.';
                     $is_valid = true;
                 }
-            }
-            else
-            {
+            } else {
                 $this->debug[] = 'Encountered an unknown response code.';
             }
         }
@@ -224,9 +206,10 @@ class VerifyEmail
     {
         $email_arr = explode('@', $email);
         $domain = array_slice($email_arr, -1);
+
         return $domain[0];
     }
-    
+
     private function find_mx()
     {
         $domain = $this->get_domain($this->email);
@@ -235,41 +218,29 @@ class VerifyEmail
         $domain = ltrim($domain, '[');
         $domain = rtrim($domain, ']');
 
-        if ('IPv6:' == substr($domain, 0, strlen('IPv6:')))
-        {
+        if ('IPv6:' == substr($domain, 0, strlen('IPv6:'))) {
             $domain = substr($domain, strlen('IPv6') + 1);
         }
 
-        $mxhosts = array();
-        if (filter_var($domain, FILTER_VALIDATE_IP))
-        {
+        $mxhosts = [];
+        if (filter_var($domain, FILTER_VALIDATE_IP)) {
             $mx_ip = $domain;
-        }
-        else
-        {
+        } else {
             getmxrr($domain, $mxhosts, $mxweight);
         }
 
-        if (!empty($mxhosts))
-        {
-            $mx_ip = $mxhosts[array_search(min($mxweight) , $mxweight) ];
-        }
-        else
-        {
-            if (filter_var($domain, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4))
-            {
+        if (!empty($mxhosts)) {
+            $mx_ip = $mxhosts[array_search(min($mxweight), $mxweight)];
+        } else {
+            if (filter_var($domain, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
                 $record_a = dns_get_record($domain, DNS_A);
-            }
-            elseif (filter_var($domain, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6))
-            {
+            } elseif (filter_var($domain, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
                 $record_a = dns_get_record($domain, DNS_AAAA);
             }
 
-            if (!empty($record_a))
-            {
+            if (!empty($record_a)) {
                 $mx_ip = $record_a[0]['ip'];
             }
-
         }
 
         $this->mx = $mx_ip;
@@ -283,15 +254,15 @@ class VerifyEmail
 
     private function add_error($code, $msg)
     {
-        $this->errors[] = array(
-            'code' => $code,
-            'message' => $msg
-        );
+        $this->errors[] = [
+            'code'    => $code,
+            'message' => $msg,
+        ];
     }
 
     private function clear_errors()
     {
-        $this->errors = array();
+        $this->errors = [];
     }
 
     private function validate_yahoo()
@@ -311,17 +282,17 @@ class VerifyEmail
         $response = $this->request_validation('yahoo', $cookies, $fields);
 
         $this->debug[] = 'Parsing the response...';
-        $response_errors = json_decode($response, true) ['errors'];
+        $response_errors = json_decode($response, true)['errors'];
 
         $this->debug[] = 'Searching errors for exisiting username error...';
-        foreach ($response_errors as $err)
-        {
-            if ($err['name'] == 'yid' && $err['error'] == 'IDENTIFIER_EXISTS')
-            {
+        foreach ($response_errors as $err) {
+            if ($err['name'] == 'yid' && $err['error'] == 'IDENTIFIER_EXISTS') {
                 $this->debug[] = 'Found an error about exisiting email.';
+
                 return true;
             }
         }
+
         return false;
     }
 
@@ -345,55 +316,42 @@ class VerifyEmail
 
         $this->debug[] = 'Searching username error...';
         $json_response = json_decode($response, true);
-        if (!$json_response['IfExistsResult'])
-        {
+        if (!$json_response['IfExistsResult']) {
             return true;
         }
+
         return false;
     }
 
     private function fetch_page($service, $cookies = '')
     {
-        if ($cookies)
-        {
-            $opts = array(
-                'http' => array(
-                    'method' => "GET",
-                    'header' => "Accept-language: en\r\n" . "Cookie: " . $cookies . "\r\n"
-                )
-            );
+        if ($cookies) {
+            $opts = [
+                'http' => [
+                    'method' => 'GET',
+                    'header' => "Accept-language: en\r\n".'Cookie: '.$cookies."\r\n",
+                ],
+            ];
             $context = stream_context_create($opts);
         }
-        if ($service == 'yahoo')
-        {
-            if ($cookies)
-            {
+        if ($service == 'yahoo') {
+            if ($cookies) {
                 $this->page_content = file_get_contents($this->_yahoo_signup_page_url, false, $context);
-            }
-            else
-            {
+            } else {
                 $this->page_content = file_get_contents($this->_yahoo_signup_page_url);
             }
-        }
-        else if ($service == 'hotmail')
-        {
-            if ($cookies)
-            {
+        } elseif ($service == 'hotmail') {
+            if ($cookies) {
                 $this->page_content = file_get_contents($this->_hotmail_signin_page_url, false, $context);
-            }
-            else
-            {
+            } else {
                 $this->page_content = file_get_contents($this->_hotmail_signin_page_url);
             }
         }
 
-        if ($this->page_content === false)
-        {
+        if ($this->page_content === false) {
             $this->debug[] = 'Could not read the sign up page.';
             $this->add_error('200', 'Cannot not load the sign up page.');
-        }
-        else
-        {
+        } else {
             $this->debug[] = 'Sign up page content stored.';
             $this->debug[] = 'Getting headers...';
             $this->page_headers = $http_response_header;
@@ -404,60 +362,52 @@ class VerifyEmail
     private function get_cookies()
     {
         $this->debug[] = 'Attempting to get the cookies from the sign up page...';
-        if ($this->page_content !== false)
-        {
+        if ($this->page_content !== false) {
             $this->debug[] = 'Extracting cookies from headers...';
-            $cookies = array();
-            foreach ($this->page_headers as $hdr)
-            {
-                if (preg_match('/^Set-Cookie:\s*(.*?;).*?$/i', $hdr, $matches))
-                {
+            $cookies = [];
+            foreach ($this->page_headers as $hdr) {
+                if (preg_match('/^Set-Cookie:\s*(.*?;).*?$/i', $hdr, $matches)) {
                     $cookies[] = $matches[1];
                 }
             }
 
-            if (count($cookies) > 0)
-            {
-                $this->debug[] = 'Cookies found: ' . implode(' ', $cookies);
+            if (count($cookies) > 0) {
+                $this->debug[] = 'Cookies found: '.implode(' ', $cookies);
+
                 return $cookies;
-            }
-            else
-            {
+            } else {
                 $this->debug[] = 'Could not find any cookies.';
             }
         }
+
         return false;
     }
 
     private function get_fields()
     {
         $dom = new DOMDocument();
-        $fields = array();
-        if (@$dom->loadHTML($this->page_content))
-        {
+        $fields = [];
+        if (@$dom->loadHTML($this->page_content)) {
             $this->debug[] = 'Parsing the page for input fields...';
             $xp = new DOMXpath($dom);
             $nodes = $xp->query('//input');
-            foreach ($nodes as $node)
-            {
-                $fields[$node->getAttribute('name') ] = $node->getAttribute('value');
+            foreach ($nodes as $node) {
+                $fields[$node->getAttribute('name')] = $node->getAttribute('value');
             }
 
             $this->debug[] = 'Extracted fields.';
-        }
-        else
-        {
+        } else {
             $this->debug[] = 'Something is worng with the page HTML.';
             $this->add_error('210', 'Could not load the dom HTML.');
         }
+
         return $fields;
     }
 
     private function request_validation($service, $cookies, $fields)
     {
-        if ($service == 'yahoo')
-        {
-            $headers = array();
+        if ($service == 'yahoo') {
+            $headers = [];
             $headers[] = 'Origin: https://login.yahoo.com';
             $headers[] = 'X-Requested-With: XMLHttpRequest';
             $headers[] = 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36';
@@ -468,24 +418,22 @@ class VerifyEmail
             $headers[] = 'Accept-Language: en-US,en;q=0.8,ar;q=0.6';
 
             $cookies_str = implode(' ', $cookies);
-            $headers[] = 'Cookie: ' . $cookies_str;
+            $headers[] = 'Cookie: '.$cookies_str;
 
             $postdata = http_build_query($fields);
 
-            $opts = array(
-                'http' => array(
-                    'method' => 'POST',
-                    'header' => $headers,
-                    'content' => $postdata
-                )
-            );
+            $opts = [
+                'http' => [
+                    'method'  => 'POST',
+                    'header'  => $headers,
+                    'content' => $postdata,
+                ],
+            ];
 
             $context = stream_context_create($opts);
             $result = file_get_contents($this->_yahoo_signup_ajax_url, false, $context);
-        }
-        else if ($service == 'hotmail')
-        {
-            $headers = array();
+        } elseif ($service == 'hotmail') {
+            $headers = [];
             $headers[] = 'Origin: https://login.live.com';
             $headers[] = 'hpgid: 33';
             $headers[] = 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36';
@@ -496,37 +444,37 @@ class VerifyEmail
             $headers[] = 'Accept-Language: en-US,en;q=0.8,ar;q=0.6';
 
             $cookies_str = implode(' ', $cookies);
-            $headers[] = 'Cookie: ' . $cookies_str;
+            $headers[] = 'Cookie: '.$cookies_str;
 
             $postdata = json_encode($fields);
 
-            $opts = array(
-                'http' => array(
-                    'method' => 'POST',
-                    'header' => $headers,
-                    'content' => $postdata
-                )
-            );
+            $opts = [
+                'http' => [
+                    'method'  => 'POST',
+                    'header'  => $headers,
+                    'content' => $postdata,
+                ],
+            ];
 
             $context = stream_context_create($opts);
             $result = file_get_contents($this->_hotmail_username_check_url, false, $context);
         }
+
         return $result;
     }
 
     private function prep_hotmail_fields($cookies)
     {
-        $fields = array();
-        foreach ($cookies as $cookie)
-        {
+        $fields = [];
+        foreach ($cookies as $cookie) {
             list($key, $val) = explode('=', $cookie, 2);
-            if ($key == 'uaid')
-            {
+            if ($key == 'uaid') {
                 $fields['uaid'] = $val;
                 break;
             }
         }
         $fields['username'] = strtolower($this->email);
+
         return $fields;
     }
 }

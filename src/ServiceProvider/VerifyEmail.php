@@ -19,7 +19,7 @@ class VerifyEmail extends ServiceProvider
     protected $defer = false;
 
     protected $rules = [
-        
+
     ];
 
     /**
@@ -43,7 +43,7 @@ class VerifyEmail extends ServiceProvider
     {
         $this->app->singleton('verifyemail', function ($app) {
             $config = $app->make('config')->get('verify-email');
-            
+
             return new VE($config['email'], $config['port']);
         });
     }
