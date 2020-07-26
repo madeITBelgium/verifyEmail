@@ -103,7 +103,7 @@ Array
 
 And to see the *raw* debug messages of the server commands sent
 ```PHP
-print_r($ve->get_debug(true));
+print_r(VerifyEmail::getDebug(true));
 ```
 which will return an array:
 
